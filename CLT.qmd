@@ -1,0 +1,43 @@
+---
+title: "Central Limit Theorem"
+author: "Arqam Patel"
+format: html
+editor: visual
+---
+
+## Lots of Dice Rolls
+
+We know that dice rolls follow a uniform distribution over {1, 2, 3, 4, 5, 6}. However, if we take a large number of means of hundred dice rolls, we get a normal-ish distribution.
+
+```{r}
+
+n <- 1e5 # number of times you want to take the mean
+N <- 1e2 # number of dicerolls per mean
+
+samps<- numeric(n)
+
+for(i in 1:n)  samps[i] <- mean(sample(1:6, N, replace =T))
+
+plot(density(samps))
+
+variance <- var(sample(1:6, 1e4, T))/(N)
+# to get true distribution, we can either estimate the plot 
+#lines(density(rnorm(1e8, 3.5, sqrt(variance))) , col = "red") t
+
+# or approximate it (faster) 
+x <- 200:500 /100
+lines(x, dnorm(x, 3.5, sqrt(variance)), col = "red")
+legend("topleft",legend = c("True", "Expected"), lty = c(1,1), col = c("black","red") )
+```
+
+```{r}
+variance 
+```
+
+We can cross check by calculating the variance by hand, which equals $\sigma^2/N$ for samples of size N. It comes out as
+
+```{r}
+35/1200
+```
+
+Close enough.

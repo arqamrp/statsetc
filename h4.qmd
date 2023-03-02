@@ -1,0 +1,298 @@
+---
+title: "MTH211 Assignment 1 Part 3"
+subtitle: "Hall 4 Canteen Simulation"
+author: "Arqam Patel, Kumar Kanishk Singh, Aditya Kumar Tiwari"
+format: pdf
+editor: visual
+toc: true
+---
+
+# A. Generating population data
+
+First, we set the seed for reproducibility. Since there were 105 weekend days in 2022, we then simulate 105 draws from a Poisson distribution with mean 120. Then we simulate 260 draws, one for each weekday in 2022, from a Poisson distribution with mean 75. Combining the two, we get the dataset of the whole year i.e. our population data.
+
+```{r}
+set.seed = 1
+weekends <- rpois(n = 105, 120)
+weekdays <- rpois(n = 260, 75)
+year <- c(weekdays, weekends)
+```
+
+We can now look at the distribution of daily orders throughout the year.
+
+```{r}
+#| echo: false
+hist(year, cex.main = 1,  main ="Distribution of daily orders in population", xlab = "No. of orders", ylab = "No. of days")
+```
+
+We now calculate the population mean $\mu$.
+
+```{r}
+#| echo: false
+mu <- mean(year)
+```
+
+```{r}
+#| echo: false
+print(paste("Population mean: ", trunc(100*mu)/100))
+```
+
+# B. Taking sample means using SRSWR and SRSWOR
+
+We use Simple Random Sampling With Replacement (setting replace = TRUE) to get 70 samples from the population data.
+
+```{r}
+srswr_sample <- sample(year, size = 70 , replace = TRUE)
+```
+
+```{r}
+#| echo: false
+hist(srswr_sample, cex.main = 1, main ="Distribution of daily orders in SRSWR sample", xlab = "No. of orders", ylab = "No. of days")
+```
+
+We then find the SRSWR sample mean ($\bar{Y}_{SRSWR}$) and the percentage error relative to the population mean.
+
+```{r}
+#| echo: false
+srswr_mean <- mean(srswr_sample)
+srswr_error <- 100*abs(srswr_mean - mu)/mu
+```
+
+```{r}
+#| echo: false
+print(paste("Sample mean using SRSR:", trunc(100 * srswr_mean)/100))
+print(paste("SRSWR percentage error", trunc(100 * srswr_error)/100, "%"))
+```
+
+We use Simple Random Sampling Without Replacement (setting replace = FALSE) to get 70 samples from the population data.
+
+```{r}
+srswor_sample <- sample(year, size = 70, replace = FALSE)
+```
+
+```{r}
+#| echo: false
+hist(srswor_sample, main ="Distribution of daily orders in SRSWOR sample", xlab = "No. of orders", ylab = "No. of days")
+```
+
+We then find the SRSWOR sample mean ($\bar{Y}_{SRSWOR}$) and the percentage error relative to the population mean.
+
+```{r}
+#| echo: false
+srswor_mean <- mean(srswor_sample)
+srswor_error <- 100*abs(srswor_mean - mu)/mu
+```
+
+```{r}
+#| echo: false
+print(paste("Sample mean using SRSWOR:", trunc(100 * srswor_mean)/100))
+print(paste("SRSWOR percentage error", trunc(100 * srswor_error)/100, "%"))
+```
+
+We can observe that performance of SRSWOR is, in this case, better than that of SRSWR.
+
+# C. Comparing performance as sample size varies
+
+To compare performances of sampling with different sample sizes, we take a large number of samples with each sample size and compute the average error corresponding to each sample size.
+
+```{r}
+#| echo: false
+n <- 100
+sample_sizes <- c(10, 25, 50, 75, 100, 125)
+mean_wr_error <-  numeric(length(sample_sizes))
+mean_wor_error <-  numeric(length(sample_sizes))
+
+for(i in 1:length(sample_sizes)){
+  wr_error <- numeric(n)
+  for(j in 1:n){
+    set.seed = 1
+    wr_sample <- sample(year, sample_sizes[i] , T)
+    wr_mean <- mean(wr_sample)
+    wr_error[j] <- 100*abs(wr_mean - mu)/mu
+  }
+  
+  mean_wr_error[i] <- mean(wr_error)
+  
+  wor_error <- numeric(n)
+  for(j in 1:n){
+    set.seed = 1
+    wor_sample <- sample(year,sample_sizes[i], F)
+    wor_mean <- mean(wor_sample)
+    wor_error[j] <- 100*abs(wor_mean - mu)/mu
+  }
+  
+  mean_wor_error[i] <- mean(wor_error)
+  
+# print(paste("For n =", i, "Population mean:", trunc(100*mu)/100, "SRSWR mean:", trunc(100 * wr_mean)/100, "SRSWOR mean", trunc(100 * wor_mean)/100))
+# print(paste("Percentage error SRSWR:", trunc(100 * wr_error)/100, "SRSWOR", trunc(100 * wor_error)/100))
+}
+
+
+plot( x= sample_sizes, y= mean_wor_error, type="l", main = "",cex.main = 1, xlab = "Sample size", ylab = "Mean error", col = "blue")
+lines(x= sample_sizes, y= mean_wr_error, type="l", col = "red")
+legend("topright", legend = c("SRSWR", "SRSWOR"), lty = c(1,1), col = c("red", "blue"))
+```
+
+We can observe that in general, performance of both the sampling algorithms improves as we increase the sample size.
+
+# D. Stratified random sampling method 1 (StRS1)
+
+$n_i \propto N_i$
+
+In this technique, we consider weekends and weekdays as distinct strata in our population. We thus sample from each stratum independently, with the stratum sample size $n_i$ proportional to the size of the stratum $N_i$ we're sampling from. We then combine these stratum samples to get the final sample.
+
+In this example we extract a sample of 70 applying this technique.
+
+```{r}
+#| echo: false
+strs1 <- function(weekends, weekdays, n, rep = F){
+  N1 <- length(weekends)
+  N2 <- length(weekdays)
+  
+  n1 <- round(N1/(N1 + N2) * n)
+  n2 <- round(N2/(N1 + N2) * n)
+  
+  set.seed = 1
+  weekends_sample <- sample(weekends, n1, replace = rep)
+  set.seed = 1
+  weekdays_sample <- sample(weekdays, n2, replace = rep )
+
+  return(c(weekends_sample,weekdays_sample))
+}
+strs1_sample <- strs1(weekends, weekdays, 70, F)
+```
+
+```{r}
+#| echo: false
+hist(strs1_sample, cex.main = 1, main ="Distribution of daily orders in StRS1 sample", xlab = "No. of orders", ylab = "No. of days")
+```
+
+We then get the sample mean as well as the percentage error with respect to the population mean.
+
+```{r}
+#| echo: false
+strs1_mean <- mean(strs1_sample)
+strs1_error <- 100*abs(strs1_mean - mu)/mu
+```
+
+```{r}
+#| echo: false
+print(paste("StRS1 sample mean", trunc(100 * strs1_mean)/100))
+print(paste("StRS1 percentage error", trunc(100 * strs1_error)/100, "%"))
+```
+
+# E. Stratified random sampling method 2 (StRS2)
+
+$n_i \propto N_i \cdot \sigma_i$
+
+In this technique, we consider weekends and weekdays as distinct strata in our population. We thus sample from each stratum independently, with the sample size proportional to the size of the stratum we're sampling from. We then combine these stratum samples to get the final sample.
+
+In this example we extract a sample of 70 applying this technique.
+
+```{r}
+#| echo: false
+strs2 <- function(weekends, weekdays, n, rep = F){
+  N1 <- length(weekends)
+  N2 <- length(weekdays)
+  
+  weekdays_sd <- sd(weekdays)
+  weekends_sd <- sd(weekends)
+  
+  s1 <- N1 * weekends_sd
+  s2 <- N2 * weekdays_sd
+  
+  n1 <- round(s1/(s1 + s2) * n)
+  n2 <- round(s2/(s1 + s2) * n)
+  
+  set.seed = 1
+  weekends_sample <- sample(weekends, n1, replace = rep)
+  set.seed = 1
+  weekdays_sample <- sample(weekdays, n2, replace = rep)
+  
+  return(c(weekends_sample, weekdays_sample))
+}
+
+strs2_sample <- strs2(weekends, weekdays, 70, F)
+```
+
+```{r}
+#| echo: false
+hist(strs2_sample, cex.main = 1, main ="Distribution of daily orders in StRS2 sample", xlab = "No. of orders", ylab = "No. of days")
+```
+
+We then get the sample mean as well as the percentage error with respect to the population mean.
+
+```{r}
+#| echo: false
+strs2_mean <- mean(strs2_sample)
+strs2_error <- 100*abs(strs2_mean - mu)/mu
+```
+
+```{r}
+#| echo: false
+print(paste("StRS2 sample mean", trunc(100 * strs2_mean)/100))
+print(paste("StRS2 percentage error", trunc(100 * strs2_error)/100, "%"))
+```
+
+# F. Comparing performance of different sampling methods
+
+For comparing SRSWR, SRSWOR, StRS1 and StRS2 let us take multiple samples and find the average error.
+
+We take the same number of samples $n$ with the same sample size for each method.
+
+```{r}
+n <- 1e3
+sample_size <- 100
+```
+
+```{r}
+#| echo: false
+wor_error <- numeric(n)
+wr_error <- numeric(n)
+st_wor_error <- numeric(n)
+st_wor_error2 <- numeric(n)
+
+set.seed = 1
+
+for(j in 1:n){
+  set.seed = 1
+  wr_sample <- sample(year, sample_size, T)
+  wr_mean <- mean(wr_sample)
+  wr_error[j] <- 100*abs(wr_mean - mu)/mu
+  
+  set.seed = 1
+  wor_sample <- sample(year, sample_size, F)
+  wor_mean <- mean(wor_sample)
+  wor_error[j] <- 100*abs(wor_mean - mu)/mu
+}
+
+for(j in 1:n){
+  st_wor_sample <- strs1(weekends, weekdays, sample_size, F)
+  st_wor_mean <- mean(st_wor_sample)
+  st_wor_error[j] <- 100*abs(st_wor_mean - mu)/mu
+}
+
+for(j in 1:n){
+  st_wor_sample2 <- strs2(weekends, weekdays, sample_size, F)
+  st_wor_mean2 <- mean(st_wor_sample2)
+  st_wor_error2[j] <- 100*abs(st_wor_mean2 - mu)/mu
+}
+
+mean_wr_error <- mean(wr_error)
+mean_wor_error <- mean(wor_error)
+mean_st_wor_err <- mean(st_wor_error)
+mean_st_wor_error2 <- mean(st_wor_error2)
+
+print(paste("Average error of SRSWR", trunc(100 * mean_wr_error)/100, "%"))
+print(paste("Average error of SRSWOR", trunc(100 * mean_wor_error)/100, "%") )
+print(paste("Average error of StRS1" , trunc(100 * mean_st_wor_err)/100, "%") )
+print(paste("Average error of StRS2" , trunc(100 * mean_st_wor_error2)/100, "%") )
+```
+
+We can observe that in this example, on average, StRS1 (with $n_i \propto N_i$ ) is the best sampling algorithm, followed by SRSWOR, then SRSWR. The worst performing algorithm is StRS2 (with $n_i \propto N_i \cdot \sigma_i$), possibly because the standard deviations of the strata are comparable.
+
+```{r}
+#| echo: false
+print(paste("SD of weekdays", trunc(100*sd(weekdays))/100))
+print(paste("SD of weekends", trunc(100*sd(weekends))/100))
+```

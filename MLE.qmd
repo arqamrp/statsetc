@@ -1,0 +1,97 @@
+---
+title: "Maximum Likelihood Estimation"
+author: "Arqam Patel"
+format: html
+editor: visual
+---
+
+## Single parameter
+
+We have two samples 2 and 3, and we need to find the most likely normal distribution with unit SD. basically, the MLE for the mean.
+
+```{r}
+# MLE for normal mean
+
+data1 <- c(2, 3)
+
+x <- 0:50
+x <- x/10
+likelihood1 <- numeric(0)
+
+for(i in x){
+  likelihood1 <- c(likelihood1,prod(dnorm(data1, sd =1, mean = i)))
+}
+
+plot(x, likelihood1, pch = 16)
+lines(x, likelihood1)
+```
+
+Unsurprisingly, it's 2.5
+
+Let's try for 2, 3 and 4 now:
+
+```{r}
+
+data2 <- c(2, 3, 4)
+
+x <- 0:50
+x <- x/10
+likelihood2 <- numeric(0)
+
+for(i in x){
+  likelihood2 <- c(likelihood2,prod(dnorm(data2, sd =1, mean = i)))
+}
+
+plot(x, likelihood2, pch = 16)
+lines(x, likelihood2)
+```
+
+Hmm. Pattern?
+
+The MLE for mu is the mean.
+
+## 2 Parameter MLE
+
+Now we have some data and we want to fit it to a two parameter exponential distribution with:
+
+$f(x) = \lambda e^{-\lambda (x-\mu)}$
+
+for $x > \mu$ , and zero otherwise.
+
+So we plot in 3 dimensions, using z for the likelihood and x and y for the two parameters we're varying. Let's take the data to be integers from 1 to 5.
+
+```{r}
+#| output: false
+
+library(plotly)
+```
+
+```{r}
+
+sampz <- 1:5
+
+lambdas <- (0:10)/10
+mus <- (0:20)/10
+
+data <- matrix(0, 3, length(mus)*length(lambdas))
+data <- data.frame(data)
+
+k <- 1
+for(i in (lambdas)){
+  for(j in (mus)){
+    data[k, 1] <- j
+    data[k, 2] <- i
+    data[k, 3] <- prod(dexp(sampz-j, rate = i))
+    k = k+1
+  }
+}
+
+plot_ly() %>% 
+  add_trace(data = data,  x=data[,1], y=data[,2], z=data[,3], type="mesh3d" ) 
+
+# mu = min(sampz) = 1
+# lambda =n/(sum(sampz)-n*min(sampz))  = 5/10
+
+```
+
+There's a cliff at mu = 1 since there is zero likelihood of mu being greater than one. If we assume mu\> 1 it would imply zero probability of our data including 1, which is obviously false.
